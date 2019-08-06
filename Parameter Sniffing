@@ -1,0 +1,58 @@
+---I’ll show you how to troubleshoot it the right way:
+
+1)Getting the Compiled Parameter Values
+2)Getting the App’s SET Options
+3)Avoiding the Density Vector
+
+--- sp_BlitzCache @storeprocedure 'WRITEstoreprocedureNAME'
+
+--removing the plan from the plan cache
+1)DBCC FREEPROCCACHE(<sqlhandle>) 
+2) DBCC FREEPROCACHE(<planhandle>)
+3)EXEC sp_recompile 'WRITEstoreprocedureNAME'
+
+--CHECK EXECUTION PLAN IN XML 
+1)CHECK ON    ParameterCompiledValue(11123)
+  MEANS 11123 IS USER CREATED NEW PLAN
+
+--EXEC DBO.WRITEstoreprocedureNAME USERID='11123'
+
+-- execution plan is optimized for @UserId = 26615,
+
+
+3)When you use a local variable in a query, SQL Server cannot use the statistics histogram. The histogram is where SQL Server has estimates for how many rows are equal to a value, how many rows are between two values, 
+
+--https://www.brentozar.com/archive/2018/03/troubleshooting-parameter-sniffing-issues-the-right-way-part-3/
+--http://www.sommarskog.se/query-plan-mysteries.html
+
+--extimate number of row is not equel to actual number of row if u execute  EXEC DBO.WRITEstoreprocedureNAME USERID='11123'
+its show equuel when EXEC DBO.WRITEstoreprocedureNAME USERID='int
+
+
+--get SET option value 
+1)EXEC sp_WhoIsActive @get_additional_info = 1  --using XMl formate
+2)EXEC sp_BlitzCache @sortorder 'cpu'           --using set option column
+3)extended event
+4) execution plan                                ---using set option
+5)generate set option script 
+
+--DECLARE @options INT;
+SELECT @options = @@OPTIONS;
+
+PRINT ('Options = ' + CONVERT(VARCHAR(10),@options));
+PRINT 'SET DISABLE_DEF_CNST_CHK '	+ CASE WHEN 0 < 1	& @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET IMPLICIT_TRANSACTIONS '	+ CASE WHEN 0 < 2	& @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET CURSOR_CLOSE_ON_COMMIT '	+ CASE WHEN 0 < 4	& @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET ANSI_WARNINGS '	+ CASE WHEN 0 < 8	& @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET ANSI_PADDING '	+ CASE WHEN 0 < 16	& @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET ANSI_NULLS '	+ CASE WHEN 0 < 32	& @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET ARITHABORT '	+ CASE WHEN 0 < 64	& @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET ARITHIGNORE '	+ CASE WHEN 0 < 128	& @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET QUOTED_IDENTIFIER '	+ CASE WHEN 0 < 256	& @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET NOCOUNT '	+ CASE WHEN 0 < 512	& @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET ANSI_NULL_DFLT_ON '	+ CASE WHEN 0 < 1024 & @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET ANSI_NULL_DFLT_OFF '	+ CASE WHEN 0 < 2048 & @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET CONCAT_NULL_YIELDS_NULL '+ CASE WHEN 0 < 4096 & @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET NUMERIC_ROUNDABORT '	+ CASE WHEN 0 < 8192 & @options THEN 'ON' ELSE 'OFF' END + ';';
+PRINT 'SET XACT_ABORT '	+ CASE WHEN 0 < 16384& @options THEN 'ON' ELSE 'OFF' END + ';';
+
