@@ -1,0 +1,58 @@
+  
+  --splite backup with compression 
+  BACKUP DATABASE [SQLShackDemo] TO 
+  DISK = N'C:\Program Files\Microsoft SQL Server\MSSQL11.MSSQLSERVER\MSSQL\Backup\SQLShackDemo.bak',  
+  DISK = N'D:\ Backup\SQLShackDemo2.bak' 
+  WITH NOFORMAT, NOINIT,  NAME = N'SQLShackDemo-Full Database Backup', SKIP, NOREWIND, NOUNLOAD, COMPRESSION,  
+  STATS = 10
+  GO
+
+----splite backup
+BACKUP DATABASE [Northwind] TO 
+DISK = 'C:\Northwind_file1.bak', 
+DISK = 'D:\Northwind_file2.bak', 
+DISK = 'E:\Northwind_file3.bak', 
+DISK = 'F:\Northwind_file4.bak' 
+WITH INIT , NOUNLOAD , NAME = 'Northwind backup', NOSKIP , STATS = 10, NOFORMAT
+
+
+--get the logical names for database data and log files
+RESTORE FILELISTONLY FROM 
+DISK =  'D:\DBBackups\ReportServer\ReportServer.bak'
+GO
+
+
+--restore the database from complete backup
+RESTORE DATABASE ReportServerComplteCopy FROM 
+DISK = 'D:\DBBackups\ReportServer\ReportServer.bak'
+WITH REPLACE ,
+MOVE 'ReportServer' TO 'C:\Program Files\Microsoft SQL Server\MSSQL11.MSSQLSERVER11\MSSQL\DATA\ReportServerComplteCopy.mdf',
+MOVE 'ReportServer_log' TO 'C:\Program Files\Microsoft SQL Server\MSSQL11.MSSQLSERVER11\MSSQL\DATA\ReportServerComplteCopy_log.ldf'
+GO
+
+
+
+ --restore database from multiple files as following,
+RESTORE DATABASE ReportServerSplitCopy FROM 
+ DISK = 'D:\DBBackups\ReportServer\ReportServer_Split1.bak'
+,DISK = 'D:\DBBackups\ReportServer\ReportServer_Split2.bak'
+,DISK = 'D:\DBBackups\ReportServer\ReportServer_Split3.bak'
+WITH REPLACE ,
+MOVE 'ReportServer' TO 'C:\Program Files\Microsoft SQL Server\MSSQL11.MSSQLSERVER11\MSSQL\DATA\ReportServerSplitCopy.mdf',
+MOVE 'ReportServer_log' TO 'C:\Program Files\Microsoft SQL Server\MSSQL11.MSSQLSERVER11\MSSQL\DATA\ReportServerSplitCopy_log.ldf'
+GO
+
+--combine or merge two data files (MDF or NDF)
+USE DataBaseName
+GO
+
+DBCC SHRINKFILE(LogicalNameOfFileToRemove, EMPTYFILE)
+ALTER DATABASE DataBaseName REMOVE FILE LogicalNameOfFileToRemove
+
+--If you don’t know the logical name of your MS SQL Server files use the following T-SQL query:
+
+SELECT
+name AS LogicalName
+,sys.database_files.physical_name AS PhysicalName
+FROM
+sys.database_files
