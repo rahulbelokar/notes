@@ -1,0 +1,120 @@
+--always on out of sync.
+1.incresses the network bandwidth
+2.increasing log files lot longer than it. and incresses auto grow size  Note not shrink logfile
+3.Try to change replica to synchronous and check once
+4.check  the performance of the disks on the mirror.
+
+---move table from server 1(AG) to othe server
+1.not need to Remove entire database from AG prior the activity.
+2.use Import Export Tool.
+
+--Add file in database(.ndf) which is part of AG.
+1) check if Disk structure is diiferent then need to remove db from AG otherwise changes replacted on secondary(automatic added on 2ndry)
+
+
+--Manual failover happen but not happen automatic failover
+1)file share witness as quorom.
+2)syncronous replica.
+
+--shrink log file (.ldf) which is part of AG.
+1) I)check is there any acrive transation on that DB if No then take log backup II) u can shrink direcly.
+2) I)remove Db from AG II) shrink file III) add Back to AG
+
+--AD permition requred to Service Account configure AO listener
+1)create computer objects permission
+2)pre-staging
+
+--user not connected to server(AG configure)
+1) Need to check connection string=listener name/Ip adress and port number 
+2)connect ssms through listener if not check cluster configuration AG and lisener and test lisener
+3)Did u change DNS on config file on application server
+ 
+Note: log will Truncate  after the log backup if there is no dependancy of log 
+log will truncate after it written on secondary replica only . if does not truncate means are active VFLs in use
+note: take full backup then schedule reindexing bcoz size of diiff backup is same else diff bkp size incresses
+diff bkp contain all extents that has been changed after last full bkp
+
+
+--PrimaryReplica
+	a. Install Cluster Feature
+	b. Create Cluster
+	c. Enable Quoram config in Cluster
+	d. Enable Always On in SQL Configuration
+	e. Enable Quorum sharing folder FULL access for primary and secondary node
+	f. Create Always on Database
+	g. Take full backup of always on and share it to secondary node
+	h. Create Availability Group
+	i. Create Availability Group Primary Replica
+	j. Create Database Groupmembership
+	k. Create Listener
+	
+--SecondaryReplica		
+	a. Install Cluster Feature
+	b. WaitforCluster
+	d. Enable Always On in SQL Configuration
+	e. Enable Quorum sharing folder FULL access for primary and secondary node
+	f. Create Always on Database
+	g. Restore database from backup
+	h. WaitForAvailabilityGroup
+	i. Create Availability Group Secondary Replica
+	j. Create Database Groupmembership
+	k. Create Listener
+--patch(AG)
+1)upgrade/update The remove server (DR replica server with asyncronous commit configuration)
+2)change the commit mode to Syncrounous commit.
+3)wait until Syncrounization state is Syncrouned
+4)failover the AG to the remote server
+5)upgrade/update The local server(primary site ) server
+6)failover the AG to the primary site
+7)change the commit mode to aSyncrounous commit.
+
+--I done faiover and failback want primary replica online in AG
+1)u have to resume HADR using alter database databasename set hadr resume
+
+--connection timeout(primary and secondary both syncronized status AG+clustering)
+1) check firewall
+2)check endpoint if mirroring/AG then drop and recreate
+3)if window firewall is on then ADD port 1433 and 5022 as inbound rule on both nodes participating  inAG
+4) telnet using listener name /on port 1433
+5)add localsystem on both side with sysadmin permition
+
+--PREQUIRETS
+1)dedicated domain account with admin right for such service NT local else u will face issueduring failover.
+2)u can used powershell to send msg to slack --psslack(u can send db email alert)
+
+--rename the physical file which part of the alwayson AG
+
+approch 1
+1)remove database from alwayson group
+2)change the physical file name after taking DB into offline
+3)update catalog
+4)add DB into always on Group
+--no way you need to remove DB from always on AG and add it once you renamed in primary and secondary (it should be restore from primary freshly and use join only)
+
+approch 2:
+1)suspend alwayson
+2)renamefile at primary
+3)rename files at secondary
+4)update sys catalog
+restart secondary and resume service
+
+approch 3: not sure
+
+1)take DB offline
+2)update the system catalog files using alter command
+3)take DB  online
+
+--Secondary database in an AG is in recovery for longer than Expected  post- failover how would you diagnose the issue?
+
+1. if db size=huge then it would take time to recover
+2.check error log for  recovery percentage
+3.some time after 100% recovery it will be in not sync mode inthe case  you do resume the data movmentt from secondary server side
+4.have u check redu queue size before failover in AG dashbaord
+5.check db startup command with blocked by any spid. sys.dm_exec_requests
+ 6.db will be sync onece 3 phase of restoration with 100% completion pragrass u cansee in error log. redo logs will take time to apply if its huge db
+7. its automatic failover or manual ? also check you enable full text serch
+8.it could be due to transaction ur database may have big log filein size , u can check with dbcc loginfo().
+9.is ur db configure with in memory OLTP
+ 
+
+
