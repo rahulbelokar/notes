@@ -1,0 +1,25 @@
+--check drive space
+xp_fixeddrives
+
+--check data and log file paths
+select * from sys.sysaltfiles
+
+--check log space of all log file 
+dbcc sqlperf(logspace)--31355.43mb--11195.43
+
+--check data and log name,size,growth
+
+sp_helpdb'tempdb'
+
+--if u know perticuler file the u check size,growth,path 
+use tempdb
+go 
+sp_helpfile'tempdev'
+
+--shrink the perticuler file and check blocking using sp_who2'active'
+use tempdb;
+go
+DBCC SHRINKFILE (N'tempdev',1024 )
+GO
+
+
