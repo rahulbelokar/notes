@@ -1,0 +1,40 @@
+1)Grow the data file out
+2)Use that space to build the new copy of our index
+3)Drop the old copy of our index, leaving a bunch of unused space in the file
+-- rebuild the index and check fragmentation:
+
+--ALTER INDEX IX ON dbo.Messages REBUILD;
+GO
+SELECT * FROM sys.dm_db_index_physical_stats  
+    (DB_ID(N'WorldOfHurt'), OBJECT_ID(N'dbo.Messages'), NULL, NULL , 'DETAILED');  
+GO
+
+-- query to check database empty space:
+USE [database name]
+GO
+SELECT 
+    [TYPE] = A.TYPE_DESC
+    ,[FILE_Name] = A.name
+    ,[FILEGROUP_NAME] = fg.name
+    ,[File_Location] = A.PHYSICAL_NAME
+    ,[FILESIZE_MB] = CONVERT(DECIMAL(10,2),A.SIZE/128.0)
+    ,[USEDSPACE_MB] = CONVERT(DECIMAL(10,2),A.SIZE/128.0 - ((SIZE/128.0) - CAST(FILEPROPERTY(A.NAME, 'SPACEUSED') AS INT)/128.0))
+    ,[FREESPACE_MB] = CONVERT(DECIMAL(10,2),A.SIZE/128.0 - CAST(FILEPROPERTY(A.NAME, 'SPACEUSED') AS INT)/128.0)
+    ,[FREESPACE_%] = CONVERT(DECIMAL(10,2),((A.SIZE/128.0 - CAST(FILEPROPERTY(A.NAME, 'SPACEUSED') AS INT)/128.0)/(A.SIZE/128.0))*100)
+    ,[AutoGrow] = 'By ' + CASE is_percent_growth WHEN 0 THEN CAST(growth/128 AS VARCHAR(10)) + ' MB -' 
+        WHEN 1 THEN CAST(growth AS VARCHAR(10)) + '% -' ELSE '' END 
+        + CASE max_size WHEN 0 THEN 'DISABLED' WHEN -1 THEN ' Unrestricted' 
+            ELSE ' Restricted to ' + CAST(max_size/(128*1024) AS VARCHAR(10)) + ' GB' END 
+        + CASE is_percent_growth WHEN 1 THEN ' [autogrowth by percent, BAD setting!]' ELSE '' END
+FROM sys.database_files A LEFT JOIN sys.filegroups fg ON A.data_space_id = fg.data_space_id 
+order by A.TYPE desc, A.NAME;
+
+
+--Instant File Initialization
+--eliminating the wait time to write binary zeroes
+
+--select 
+    'alter index ' + name + ' on ' + @dbname + '.dbo.' + OBJECT_NAME(a.object_id) + ' rebuild;'
+from sys.dm_db_index_physical_stats (DB_ID(@dbname), NULL, NULL, NULL, NULL) AS a
+inner join sys.indexes AS b ON a.object_id = b.object_id AND a.index_id = b.index_id
+where avg_fragmentation_in_percent > 30
