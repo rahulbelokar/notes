@@ -1,0 +1,29 @@
+Cardinality Estimation resolved using Create filter statistics.
+Transact-SQL
+-- Fix the problem by creating Filtered Statistics Objects
+CREATE STATISTICS Country_UK ON Country(ID) 
+WHERE Name = 'UK'
+ 
+CREATE STATISTICS Country_Austria ON Country(ID) 
+WHERE Name = 'Austria' 
+GO
+
+--check Execution Plan actual row  and Estimated Row should be same means Ploblem is Resolved 
+--actual row divide by Estimated row =density vector should be Zero
+
+
+step 1: -- Update the Statistics on both tables
+UPDATE STATISTICS Country WITH FULLSCAN 
+UPDATE STATISTICS Orders WITH FULLSCAN 
+GO
+
+step2: SELECT SalesAmount FROM Country
+INNER JOIN Orders ON Country.ID = Orders.ID
+WHERE Name = 'UK'
+OPTION
+(
+RECOMPILE,-- Used to see the Statistics Output
+    QUERYTRACEON 3604,-- Redirects the output to SSMS
+    QUERYTRACEON 9204-- Returns the Statistics that were used during Cardinality Estimation ("Stats loaded")
+)
+GO
