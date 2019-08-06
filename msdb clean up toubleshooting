@@ -1,0 +1,113 @@
+---How to Reduce MSDB Size From 42Gb to 200Mb
+
+---I looked at the size of msdb:
+
+SELECT name, size = size * 8. / 1024, space_used = FILEPROPERTY(name, 'SpaceUsed') * 8. / 1024
+FROM sys.database_files
+
+---I’ve checked resource-cost queries running on the server:
+
+SELECT
+      r.session_id
+    , db = DB_NAME(r.database_id)
+    , r.[status]
+    , p.[text]
+    --, sql_text = SUBSTRING(p.[text], (r.statement_start_offset / 2) + 1,
+    --        CASE WHEN r.statement_end_offset = -1
+    --            THEN 2147483647
+    --            ELSE ((r.statement_end_offset - r.statement_start_offset) / 2) + 1
+    --        END)
+    , r.cpu_time
+    , r.total_elapsed_time
+    , r.reads
+    , r.writes
+    , r.logical_reads
+FROM sys.dm_exec_requests r
+CROSS APPLY sys.dm_exec_sql_text(r.[sql_handle]) p
+WHERE r.[sql_handle] IS NOT NULL
+    AND r.session_id != @@SPID
+ORDER BY logical_reads DESC
+
+
+--This query returns the top list of objects and their size:
+USE msdb
+GO
+SELECT TOP(10)
+      o.[object_id]
+    , obj = SCHEMA_NAME(o.[schema_id]) + '.' + o.name
+    , o.[type]
+    , i.total_rows
+    , i.total_size
+FROM sys.objects o
+JOIN (
+    SELECT
+          i.[object_id]
+        , total_size = CAST(SUM(a.total_pages) * 8. / 1024 AS DECIMAL(18,2))
+        , total_rows = SUM(CASE WHEN i.index_id IN (0, 1) AND a.[type] = 1 THEN p.[rows] END)
+    FROM sys.indexes i
+    JOIN sys.partitions p ON i.[object_id] = p.[object_id] AND i.index_id = p.index_id
+    JOIN sys.allocation_units a ON p.[partition_id] = a.container_id
+    WHERE i.is_disabled = 0
+        AND i.is_hypothetical = 0
+    GROUP BY i.[object_id]
+) i ON o.[object_id] = i.[object_id]
+WHERE o.[type] IN ('V', 'U', 'S')
+ORDER BY i.total_size DESC
+
+--We cannot delete data directly from sys.sysxmitqueue, because this table is a system object (S). After some searching, I found a way to get SQL Server to clear the table. When creating a new Service Broker, all the messages associated with the old broker will be deleted.
+/*USE msdb
+GO
+ALTER DATABASE msdb SET NEW_BROKER WITH ROLLBACK IMMEDIATE
+*/
+
+--ll e-mail attachments that are sent with the letter body are neatly stored there.
+SELECT o.name, p.[rows]
+FROM msdb.sys.objects o
+JOIN msdb.sys.partitions p ON o.[object_id] = p.[object_id]
+WHERE o.name LIKE 'sysmail%'
+    AND o.[type] = 'U'
+    AND p.[rows] > 0
+
+/*
+--Alternatively, use ready-to-use stored procedures sysmail_delete_mailitems_sp and sysmail_delete_log_sp:
+DECLARE @DateBefore DATETIME 
+SET @DateBefore = DATEADD(DAY, -7, GETDATE())
+EXEC msdb.dbo.sysmail_delete_mailitems_sp @sent_before = @DateBefore --, @sent_status = 'sent'
+EXEC msdb.dbo.sysmail_delete_log_sp @logged_before = @DateBefore
+
+--The history of SQL Server Agent tasks is also stored in msdb. When there are too many entries in the log, they are hard to work with, so I try to clean it regularly with sp_purge_jobhistory:
+DECLARE @DateBefore DATETIME 
+SET @DateBefore = DATEADD(DAY, -7, GETDATE())
+EXEC msdb.dbo.sp_purge_jobhistory @oldest_date = @DateBefore
+
+--The old backup records can be deleted with sp_delete_backuphistory:
+DECLARE @DateBefore DATETIME 
+SET @DateBefore = DATEADD(DAY, -120, GETDATE())
+EXEC msdb.dbo.sp_delete_backuphistory @oldest_date = @DateBefore
+
+*/
+
+
+
+/* USE MSDB
+GO
+DECLARE @varDate DATETIME
+-- Set date to 30 days ago
+SET @varDate = DATEADD(d,-30,GETDATE());
+-- delete from sysmail_attachments
+DELETE FROM dbo.sysmail_attachments
+WHERE Last_mod_date < @varDate;
+-- delete from sysmail_send_retries
+DELETE FROM dbo.sysmail_send_retries
+WHERE Last_send_attempt_date < @varDate;
+-- delete from sysmail_allitems
+EXEC Sysmail_delete_mailitems_sp
+@Sent_before = @varDate;
+-- delete from sysmail_log
+EXEC Sysmail_delete_log_sp
+@Logged_before = @varDate;
+GO */
+
+select count(*)  FROM dbo.sysmail_attachments--15186
+select count(*) FROM dbo.sysmail_send_retries--379
+sp_helptext Sysmail_delete_mailitems_sp
