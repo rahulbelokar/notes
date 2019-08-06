@@ -1,0 +1,14 @@
+--satistics status
+select a.id as 'ObjectID', isnull(a.name,'Heap') as 'IndexName', b.name as 'TableName',
+stats_date (id,indid) as stats_last_updated_time
+from sys.sysindexes as a
+inner join sys.objects as b
+on a.id = b.object_id
+where b.type = 'U' and 
+stats_date (id,indid) <= '2019-06-13' 
+
+--update statistics
+
+UPDATE STATISTICS 
+
+--UPDATE STATISTICS [table_name] [index_name/statistics_name]
