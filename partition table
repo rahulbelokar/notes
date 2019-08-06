@@ -1,0 +1,24 @@
+---take backup 
+--index maintence
+--update statistics more time
+--sql query are slow
+--100 mill row deleted loadand unload data--take table level locks---deleteing/inserting million of row can be problamatic
+--when u create table by debault table create on non partition data 
+--sys.partion table u seeone record for every index
+--one partion for primary key
+--one partition for every index
+--availd table scan --implement renge scan
+-scan begger index its problem
+---create filegroup of NON MODIFID data and put into read only mode and take filegroup backup and take full/diff backup of changing file group data means ur saving bkp time
+--partition swetch--schema lock accured
+--every day u load data into fact tableu ge data/records from oltp data sourseu have hetrogenious data sourse u get transaction orders from verious sourse puting into staging table u doing data masagging/formationg finaly in sataging table u want to load the datainto a fact table
+insert into fact table 
+select * from  stagin table
+--might take page split --take log time
+--partion become open
+--elimination the partion --jitana data lagega utanehi partion serch karenga 
+--every partion is have its own filegroup
+--bondry point --partition range--load date every day ---15000 partition  --2012 sql server suppory --base on partion key 
+--partion is not solution for gigger table
+--avantage of partition 1)load data fast   2) delete data faster
+    
