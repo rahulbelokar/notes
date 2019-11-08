@@ -1,0 +1,38 @@
+Drill down script to check lead blocker.
+
+--all blocked sessions
+
+select * from sys.sysprocesses where blocked <> 0
+
+--root blocker or head blocker
+SELECT
+    spid
+    ,sp.STATUS
+    ,loginame   = SUBSTRING(loginame, 1, 12)
+    ,hostname   = SUBSTRING(hostname, 1, 12)
+    ,blk        = CONVERT(CHAR(3), blocked)
+    ,open_tran
+    ,dbname     = SUBSTRING(DB_NAME(sp.dbid),1,10)
+    ,cmd
+    ,waittype
+    ,waittime
+    ,last_batch
+    ,SQLStatement       =
+        SUBSTRING
+        (
+            qt.text,
+            er.statement_start_offset/2,
+            (CASE WHEN er.statement_end_offset = -1
+                THEN LEN(CONVERT(nvarchar(MAX), qt.text)) * 2
+                ELSE er.statement_end_offset
+                END - er.statement_start_offset)/2
+        )
+FROM master.dbo.sysprocesses sp
+LEFT JOIN sys.dm_exec_requests er
+    ON er.session_id = sp.spid
+OUTER APPLY sys.dm_exec_sql_text(er.sql_handle) AS qt
+WHERE spid IN (SELECT blocked FROM master.dbo.sysprocesses)
+AND blocked = 0
+--enter the above obtained spid below
+select percent_complete,  * from sys.dm_exec_requests where session_id =158
+select [program_name], * from sys.sysprocesses where spid =158
