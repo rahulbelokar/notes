@@ -1,0 +1,22 @@
+nested loop /merge/hash --join
+
+optimizer choose right type of join based on cost factor deprndes on the size of input 
+
+out off 2 input one input compreability much larger than other one  you might see optimizer chooses the hash join  likewise 
+
+
+onother factor joint factor we using 
+2 ip are sorted and we using quality joined operator then optimizer go for mergr so it is completed desigion of optimizer 
+to choose the right type of join
+
+sql server give the option to apply  join hints u always hints the optimizer you want different type of joint over optimizer has choosen   you force the optimizer to apply hints
+  ypu need to fixed statistics indexed before aply the hints foer query performance
+
+
+  enable 845
+
+  sys.dm_exec_query_stats
+
+  min/max  worker time
+
+  diff in max and min elapse time write bussness logics 
